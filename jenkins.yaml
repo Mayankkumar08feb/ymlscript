@@ -1,0 +1,98 @@
+---
+ - hosts: localhost
+   become: yes
+   become_method: sudo
+   vars:
+     my_jenkins_plugins:
+       gitbucket:
+       build-pipeline-plugin:
+       deploy:
+       maven-plugin:
+       nodejs:
+
+   tasks:
+   - name: Installing epel release
+     yum: 
+       name: epel-release 
+       state: present
+   
+   - name: Install Java
+     yum: 
+       name: java-1.8.0-openjdk
+       state: present
+
+   - name: Install Java JDK
+     yum:
+       name: java-1.8.0-openjdk-devel
+       state: present 
+
+   - name: Download jenkins.repo
+     get_url: 
+       url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
+       dest: /etc/yum.repos.d/jenkins.repo
+
+   - name: import jenkins
+     rpm_key:
+       state: present
+       key: https://pkg.jenkins.io/redhat-stable/jenkins.io.key
+
+   - name: Install Jenkins
+     yum: 
+       name: jenkins-2.138.1-1.1.noarch
+       state: present
+   
+   - name: Copy jenkins data to appropriate location
+     unarchive: 
+       src: jenkins.tar.gz
+       dest: /var/lib/
+
+   - name: setting permissions to jenkins dir.
+     file:
+       path: /var/lib/jenkins 
+       state: directory
+       owner: jenkins
+       group: jenkins
+       mode: 0755
+
+   - name: start jenkins
+     systemd:
+       name: jenkins
+       state: started
+
+   - name: enable jenkins
+     systemd:
+       name: jenkins
+       enabled: true
+
+   - name: Install plugins without a specific version
+     jenkins_plugin:
+       name: "{{ item.key }}"
+       url_username: devops
+       url_password: devops
+       url: http://localhost:8080
+     register: my_jenkins_plugin_unversioned
+     #when: >
+      # 'version' not in item.value
+     with_dict: "{{ my_jenkins_plugins }}"
+
+   - name: Check if restart is required by any of the unversioned plugins
+     set_fact:
+       jenkins_restart_required: yes
+     when: item.changed
+     with_items: "{{ my_jenkins_plugin_unversioned.results }}"
+ 
+   - name: Restart Jenkins if required
+     service:
+       name: jenkins
+       state: restarted
+     when: jenkins_restart_required 
+   
+ #- name: Connect To Browser
+ 
+   - name: Creating jenkins job using basic authentication.
+     jenkins_job:
+       config: 
+       name: fetch code form GitHub
+       password: devops
+       url: "http://localhost:8080"
+       user: devops 

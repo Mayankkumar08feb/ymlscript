@@ -1,0 +1,42 @@
+---
+ - hosts: localhost
+   become: true
+   become_method: sudo
+
+   tasks: 
+   - name: Installing epel release
+     yum:
+       name: epel-release
+       state: present
+
+   - name: Install Java
+     yum:
+       name: java-1.8.0-openjdk
+       state: present
+
+   - name: Install Java JDK
+     yum:
+       name: java-1.8.0-openjdk-devel
+       state: present
+
+   - name: Donwloading  Maven .tar.gz
+     get_url:
+       url: "http://mirrors.wuchna.com/apachemirror/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz"
+       dest: /opt
+   
+   - name: Extracting Apache Maven 3.5.4
+     unarchive:
+       src: /opt/apache-maven-3.5.4-bin.tar.gz
+       dest: /opt/
+   
+   - name: Setting Permissions to Apache Maven Dir.
+     file:
+       path: /opt/apache-maven-3.5.4
+       state: directory
+       owner: root
+       group: root
+       mode: 0755
+   
+   - name: Setting Path and Variables.
+     shell: export PATH=/opt/apache-maven-3.5.4/bin:$PATH    
+       
